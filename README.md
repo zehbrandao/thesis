@@ -6,7 +6,7 @@ Despite my best efforts, there might be some instances in which the code might i
  This is a work in progress and all code is being submitted as it goes.
  
  # Repo Structure
-**A — Wrangling Space** of all base maps and geodata that are necessary either (a) as input to the model or (b) as aids for analysis.
+**A — Wrangling Space:** wrangling of all base maps and geodata that are necessary either (a) as input to the model or (b) as aids for analysis.
  
 **B — OD and GTFS** data analysis
 
