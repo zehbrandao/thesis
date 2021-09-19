@@ -1,52 +1,18 @@
 import datetime
+import warnings
 
 import geopandas as gpd
 import pandas as pd
 import partridge as ptg
 
 
-# MAIN FUNCTIONS -------------------------------------------------------------
-
-def _read_gtfs_feed(path):
-    """Parses gtfs data using partridge.
-    Parameters
-    ----------
-    path : str or Pathlib object
-        Path to gtfs folder, which can be a zipped one, optionally
-    
-    Returns
-    -------
-        main gtfs tables
-        
-    TO DO: allow to not necessarily extract the busiest date
-    """
-    _,service_ids = ptg.read_busiest_date(path) 
-
-    view = {'trips.txt': {'service_id': service_ids}} 
-
-    # WARNING: there's a subtle deprecation warning in ptg.load_geo_feed
-    # because of pyproj (see below),but it shouldn't be an issue for now.
-    # In any event, see if partridge fixes it or if it's you who's mising 
-    # something.
-    #
-    # refer to https://bit.ly/proj6_axis_order_change 
-    gtfs_feed = ptg.load_geo_feed(path, view)
-    routes = gtfs_feed.routes
-    trips = gtfs_feed.trips
-    stops = gtfs_feed.stops
-    stop_times = gtfs_feed.stop_times
-    shapes = gtfs_feed.shapes
-    
-    
-    return gtfs_feed, routes, trips, stops, stop_times, shapes
-
-    
+   
 def _put_data_into_stop_times(stop_times, trips, routes, stops):
-    """Merges all gtfs tables with stop_times, which makes some future
-    manipulations handier.
+    """This is just to facilitate some data manipulations.
+    I did thisbecause this project is largely inspired
+    by https://github.com/Bondify/gtfs_functions and I
+    followed along, but this may change in the future.
     """
-    # MEMENTO: when 'on' is not specified with the merge method, pandas
-    # look for all columns with a common name and merges on them.
     trips = trips.merge(routes, how='left')
     stop_times = stop_times.merge(trips, how='left')
     stop_times = stop_times.merge(stops, how='left')
@@ -55,8 +21,6 @@ def _put_data_into_stop_times(stop_times, trips, routes, stops):
     return stop_times
 
 
-# AUXILIARY FUNCTIONS --------------------------------------------------------
-# TO DO: consider putting these auxiliaries into a module of their own
 def _get_window_labels(cutoffs):
     
     # TO DO: allow for float inputs (e.g. 5.5 as in 05:30:00)

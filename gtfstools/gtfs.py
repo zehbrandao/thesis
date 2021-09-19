@@ -1,4 +1,5 @@
 import pandas as pd
+import partridge as ptg
 
 from scipy.stats import zscore
 
@@ -7,18 +8,28 @@ from . import utils_time as ut
 from . import utils_geo as ug
 
 
-def parse_feed(path):
+def load_feed(path, busy_date=True):
+    """Get gtfs data using partridge.
+    
+    Parameters
+    ----------
+    path : str or pathlib.Path
+        Path to gtfs folder, which can be (optionally) zipped
+    
+    Returns
+    -------
+        feed object
     """
-    Reads gtfs files and, after some manipulations, puts all 
-    relevant info into stop_times data.
-    """
-    gtfs_feed, routes, trips, stops, stop_times, shapes = up._read_gtfs_feed(path)
-    stop_times = up._put_data_into_stop_times(stop_times, trips, routes, stops)
+    if busy_date:
+        _, service_ids = ptg.read_busiest_date(path)
+        view = {'trips.txt': {'service_id': service_ids}}
+    else:
+        view = {}
     
     
-    return gtfs_feed, routes, trips, stops, stop_times, shapes
-
-
+    return ptg.load_geo_feed(path, view)
+    
+    
 def summarize_trips(stop_times, summ_by, cutoffs):
     """Takes the stop_times DataFrame, as returned by parse_gtfs()
     and returns a summary of trips by the time windows of choice.
@@ -47,7 +58,7 @@ def summarize_trips(stop_times, summ_by, cutoffs):
                                                agg_on=summ_by,)    
     
     summary = trips_per_window.merge(max_hourly_trips,
-                                     how='left',)    
+                                         how='left',)    
     summary = summary.merge(min_hourly_headway,
                             how='left',)
     
