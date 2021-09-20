@@ -1,4 +1,5 @@
 import pandas as pd
+import partridge as ptg
 
 from scipy.stats import zscore
 
@@ -7,18 +8,28 @@ from . import utils_time as ut
 from . import utils_geo as ug
 
 
-def parse_feed(path):
+def load_feed(path, busy_date=True):
+    """Get gtfs data using partridge.
+    
+    Parameters
+    ----------
+    path : str or pathlib.Path
+        Path to gtfs folder, which can be (optionally) zipped
+    
+    Returns
+    -------
+        feed object
     """
-    Reads gtfs files and, after some manipulations, puts all 
-    relevant info into stop_times data.
-    """
-    gtfs_feed, routes, trips, stops, stop_times, shapes = up._read_gtfs_feed(path)
-    stop_times = up._put_data_into_stop_times(stop_times, trips, routes, stops)
+    if busy_date:
+        _, service_ids = ptg.read_busiest_date(path)
+        view = {'trips.txt': {'service_id': service_ids}}
+    else:
+        view = {}
     
     
-    return gtfs_feed, routes, trips, stops, stop_times, shapes
-
-
+    return ptg.load_geo_feed(path, view)
+    
+    
 def summarize_trips(stop_times, summ_by, cutoffs):
     """Takes the stop_times DataFrame, as returned by parse_gtfs()
     and returns a summary of trips by the time windows of choice.
@@ -35,9 +46,11 @@ def summarize_trips(stop_times, summ_by, cutoffs):
     -------
     summary : DataFrame
     """
-    departures = stop_times.copy()
-    departures = ut._fix_departure_times(departures)
-    departures = ut._get_trip_start_data(departures)
+    op_data = up._assemble_operational_data(feed)
+    
+    departures = (op_data
+                  .pipe(ut._fix_departure_times)
+                  .pipe(ut._get_trip_start_data))
     
     max_hourly_trips, min_hourly_headway = ut._hourly_trip_summary(departures,
                                                                    agg_on=summ_by,)
@@ -46,10 +59,9 @@ def summarize_trips(stop_times, summ_by, cutoffs):
                                                cutoffs,
                                                agg_on=summ_by,)    
     
-    summary = trips_per_window.merge(max_hourly_trips,
-                                     how='left',)    
-    summary = summary.merge(min_hourly_headway,
-                            how='left',)
+    summary = (trips_per_window
+               .merge(max_hourly_trips, how='left')
+               .merge(min_hourly_headway, how='left'))
     
     if summ_by == 'route_id':
         route_names = up._get_route_full_names(departures)
@@ -57,14 +69,17 @@ def summarize_trips(stop_times, summ_by, cutoffs):
                                 how='left',
                                 left_on=summ_by,
                                 right_index=True,)
-    # TO DO: elif for getting stop names
+    elif summ_by == 'stop_id':
+        route_names = up._get_route_full_names(departures)
+        summary = summary.merge(departures[['stop_id', 'stop_name']],
+                                how='left',)
         
     # Final polishments and embelishments
     summary.rename(columns={'direction_id': 'direction'},
                          inplace=True,)
     
     summary.replace({'direction': {0: 'Inbound', 1: 'Outbound'}},
-                          inplace=True,)
+                    inplace=True,)
     
     preferred_column_order = [summ_by, 'direction', 'route_name',
                               'window', 'trips', 'headway_minutes', 

@@ -46,9 +46,11 @@ def summarize_trips(stop_times, summ_by, cutoffs):
     -------
     summary : DataFrame
     """
-    departures = stop_times.copy()
-    departures = ut._fix_departure_times(departures)
-    departures = ut._get_trip_start_data(departures)
+    op_data = up._assemble_operational_data(feed)
+    
+    departures = (op_data
+                  .pipe(ut._fix_departure_times)
+                  .pipe(ut._get_trip_start_data))
     
     max_hourly_trips, min_hourly_headway = ut._hourly_trip_summary(departures,
                                                                    agg_on=summ_by,)
@@ -57,10 +59,9 @@ def summarize_trips(stop_times, summ_by, cutoffs):
                                                cutoffs,
                                                agg_on=summ_by,)    
     
-    summary = trips_per_window.merge(max_hourly_trips,
-                                         how='left',)    
-    summary = summary.merge(min_hourly_headway,
-                            how='left',)
+    summary = (trips_per_window
+               .merge(max_hourly_trips, how='left')
+               .merge(min_hourly_headway, how='left'))
     
     if summ_by == 'route_id':
         route_names = up._get_route_full_names(departures)
@@ -68,14 +69,17 @@ def summarize_trips(stop_times, summ_by, cutoffs):
                                 how='left',
                                 left_on=summ_by,
                                 right_index=True,)
-    # TO DO: elif for getting stop names
+    elif summ_by == 'stop_id':
+        route_names = up._get_route_full_names(departures)
+        summary = summary.merge(departures[['stop_id', 'stop_name']],
+                                how='left',)
         
     # Final polishments and embelishments
     summary.rename(columns={'direction_id': 'direction'},
                          inplace=True,)
     
     summary.replace({'direction': {0: 'Inbound', 1: 'Outbound'}},
-                          inplace=True,)
+                    inplace=True,)
     
     preferred_column_order = [summ_by, 'direction', 'route_name',
                               'window', 'trips', 'headway_minutes', 

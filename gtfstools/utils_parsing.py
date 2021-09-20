@@ -7,18 +7,13 @@ import partridge as ptg
 
 
    
-def _put_data_into_stop_times(stop_times, trips, routes, stops):
-    """This is just to facilitate some data manipulations.
-    I did thisbecause this project is largely inspired
-    by https://github.com/Bondify/gtfs_functions and I
-    followed along, but this may change in the future.
-    """
-    trips = trips.merge(routes, how='left')
-    stop_times = stop_times.merge(trips, how='left')
-    stop_times = stop_times.merge(stops, how='left')
-
-
-    return stop_times
+def _assemble_operational_data():
+    trips_and_routes = pd.merge(feed.trips
+                                feed.routes,
+                                how='left',)
+    return (feed.stop_stimes
+            .merge(trips_and_routes, how='left')
+            .merge(feed.stops, how='left'))
 
 
 def _get_window_labels(cutoffs):
