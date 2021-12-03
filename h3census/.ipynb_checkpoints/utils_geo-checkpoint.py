@@ -115,7 +115,7 @@ def _area_weighted_transformations(source, destination, area_weighted_vars):
     """
     # Indexes are reset lest the labelling information is
     # lost after overlay
-    source['source_area_m2'] = source.geometry.map(lambda x: x.area)
+    source['source_area_m2'] = source.geometry.area
     from_ = source.reset_index()
     
     to = destination.reset_index()
@@ -126,7 +126,7 @@ def _area_weighted_transformations(source, destination, area_weighted_vars):
                                )
     # TO DO: the abve might be best in a function of its own
     
-    intersectioned_areas_m2 = intersection.geometry.map(lambda x: x.area)
+    intersectioned_areas_m2 = intersection.geometry.area
     area_weights = intersectioned_areas_m2 / intersection.source_area_m2
     
     for each in area_weighted_vars:
@@ -169,7 +169,7 @@ def _population_based_transformations(gdf, pop_weighted_vars,
         data.loc[:,each] *= pop_weights.to_numpy()
     
     
-    return data
+    return data.drop(columns='base_pop')
 
 
 def _get_population_weighted_centroids(gdf, pop_col,
